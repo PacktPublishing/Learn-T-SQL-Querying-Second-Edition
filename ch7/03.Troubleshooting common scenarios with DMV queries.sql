@@ -39,39 +39,39 @@ GO
 
 -- Cached query plan issues
 -- Finding resource intensive queries
-SELECT st.[text], qp.query_plan, q.*
-FROM
-(SELECT TOP 10 [execution_count],
-[total_worker_time]/[execution_count] AS [Avg_CPU_Time],
-[total_elapsed_time]/[execution_count] AS [Avg_Duration],
-[total_logical_reads]/[execution_count] AS [Avg_Logical_Reads],
-ISNULL([Total_grant_kb]/[execution_count], -1) AS [Avg_Grant_KB],
-ISNULL([Total_used_grant_kb]/[execution_count], -1) AS [Avg_Used_Grant_KB],
-plan_handle, sql_handle 
-FROM sys.dm_exec_query_stats WITH (NOLOCK)
-ORDER BY [Avg_CPU_Time] DESC
-) AS q
-OUTER APPLY sys.dm_exec_query_plan(q.plan_handle) AS qp
-OUTER APPLY sys.dm_exec_sql_text(q.sql_handle) AS st;
+WITH queries AS 
+	(SELECT TOP 10 [execution_count],
+	[total_worker_time]/[execution_count] AS [Avg_CPU_Time],
+	[total_elapsed_time]/[execution_count] AS [Avg_Duration],
+	[total_logical_reads]/[execution_count] AS [Avg_Logical_Reads],
+	ISNULL([Total_grant_kb]/[execution_count], -1) AS [Avg_Grant_KB],
+	ISNULL([Total_used_grant_kb]/[execution_count], -1) AS [Avg_Used_Grant_KB],
+	plan_handle, sql_handle 
+	FROM sys.dm_exec_query_stats
+	ORDER BY [Avg_CPU_Time] DESC)
+SELECT st.[text], qp.query_plan, queries.*
+FROM queries
+OUTER APPLY sys.dm_exec_query_plan(queries.plan_handle) AS qp
+OUTER APPLY sys.dm_exec_sql_text(queries.sql_handle) AS st;
 
 -- Cached query plan issues
 -- Queries with excessive memory grants
-SELECT st.[text], qp.query_plan, q.*
-FROM
-(SELECT TOP 10 [execution_count], 
-[total_worker_time]/[execution_count] AS [Avg_CPU_Time],
-[total_elapsed_time]/[execution_count] AS [Avg_Duration],
-[total_logical_reads]/[execution_count] AS [Avg_Logical_Reads], 
-ISNULL([Total_grant_kb]/[execution_count], -1) AS [Avg_Grant_KB],
-ISNULL([Total_used_grant_kb]/[execution_count], -1) AS [Avg_Used_Grant_KB],
-COALESCE((([Total_used_grant_kb] * 100.00) / NULLIF([Total_grant_kb],0)), 0) AS [Grant2Used_Ratio],
-plan_handle, sql_handle 
-FROM sys.dm_exec_query_stats WITH (NOLOCK)
-WHERE total_grant_kb/execution_count > 1024	AND execution_count > 1
-ORDER BY [Grant2Used_Ratio] 
-) AS q
-OUTER APPLY sys.dm_exec_query_plan(q.plan_handle) AS qp
-OUTER APPLY sys.dm_exec_sql_text(q.sql_handle) AS st;
+WITH queries AS
+	(SELECT TOP 10 [execution_count], 
+	[total_worker_time]/[execution_count] AS [Avg_CPU_Time],
+	[total_elapsed_time]/[execution_count] AS [Avg_Duration],
+	[total_logical_reads]/[execution_count] AS [Avg_Logical_Reads], 
+	ISNULL([total_grant_kb]/[execution_count], -1) AS [Avg_Grant_KB],
+	ISNULL([total_used_grant_kb]/[execution_count], -1) AS [Avg_Used_Grant_KB],
+	COALESCE((([total_used_grant_kb] * 100.00) / NULLIF([total_grant_kb],0)), 0) AS [Grant2Used_Ratio],
+	plan_handle, sql_handle 
+	FROM sys.dm_exec_query_stats
+	WHERE total_grant_kb/execution_count > 1024	AND execution_count > 1
+	ORDER BY [Grant2Used_Ratio])
+SELECT st.[text], qp.query_plan, queries.*
+FROM queries
+OUTER APPLY sys.dm_exec_query_plan(queries.plan_handle) AS qp
+OUTER APPLY sys.dm_exec_sql_text(queries.sql_handle) AS st;
 
 -- Mining XML Query Plans
 -- Plans with Missing Indexes
