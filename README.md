@@ -1,6 +1,3 @@
-
-
-
 # Learn T-SQL Querying, Second Edition
 
 <a href="https://www.packtpub.com/product/learn-t-sql-querying-second-edition/9781837638994"><img src="https://m.media-amazon.com/images/I/718hqSJkv8L._SL1500_.jpg" alt="Learn T-SQL Querying, Second Edition" height="256px" align="right"></a>
